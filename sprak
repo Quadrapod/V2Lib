@@ -47,11 +47,17 @@ array V2Div(array v1, array v2)
     return [v1[0]/v2[0], v1[1]/v2[1]]
 end
 
+
 #Magnitude of a vector
-number V2Distance(array v)
+number V2Magnitude(array v)
     return Sqrt(v[0]*v[0] + v[1]*v[1])
 end
 
+#Distance between two vectors
+number V2Distance(array v1, array v2)
+    array v = V2Sub(v1,v2)
+    return Sqrt(v[0]*v[0] + v[1]*v[1])
+end
 
 #Generate a random number between 0 and 2 Pi
 number RandomAngle()
