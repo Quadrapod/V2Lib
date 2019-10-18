@@ -1,0 +1,290 @@
+ClearText()
+#Asteroids
+array asteroidModel = [] 
+number asteroidPoints = 8 #number of points in the model
+number asteroidRadius = 1 #radius of the model
+number asteroidJiggle = 0.3 #variation in the model
+number asteroidSize = 64 #starting size
+number asteroidRot = 1 #rotation Speed of the asteroids
+number asteroidVel = 30 #Starting velocity of the asteroids
+number speedup = 1.5 #The factor to speed up smaller asteroids by
+array asteroidList = []
+
+#Player
+array shipModel = [[0,10], [7,-10], [-7,-10], [0,10]]
+number playerRotation = 0 #the player's rotation
+array playerVelocity = [0,0] #the player's velocity
+array playerPosition = [0,0] #the player's position 
+number pRotRate = 3 #How quickly the player rotates
+number playerAcc = 4 #How quickly player accelerates
+
+#Bullets
+number bulletVelocity = 120 #Speed of bullets
+number bulletMax = 3 #Maximum number of bullets on screen
+number bulletLength = 8 #How long the bullet lines should be
+number bulletDelay = 0.7 #Delay between successive firing
+number bulletTimer = 0 #Time() when last bullet was fired
+array bulletList = []
+array bulletModel = [[0,0],[0,-bulletLength]]
+
+#Engine variables
+number Pi = 3.141592653
+array middle = [Width()/2, Height()/2] #Center of the screen
+number time = Time() #time when the frame began
+number deltaT = 0 #change in time between frames
+number score = 0
+bool dead = false 
+RestartGame()
+
+loop
+    deltaT = Time() - time
+    time = Time()
+    
+    if IsKeyPressed("Up")
+        array acc = [-Sin(playerRotation)*playerAcc, Cos(playerRotation)*playerAcc]
+        playerVelocity = V2Add(acc,playerVelocity)
+        PlaySound("Hit 2")
+    end
+    
+    if IsKeyPressed("Right")
+        playerRotation += pRotRate*deltaT
+    else if IsKeyPressed("Left")
+        playerRotation -= pRotRate*deltaT
+    end
+    
+    if IsKeyPressed("Space")
+        if (Time() - bulletTimer > bulletDelay) && (Count(bulletList) < bulletMax)
+            Append(bulletList,GenerateBullet())
+            bulletTimer = Time()
+            PlaySound("Shoot 2")
+        end
+    end
+    
+    array vlocal = V2Mul(playerVelocity,[deltaT,deltaT])
+    playerPosition = V2Add(vlocal,playerPosition)
+    ScreenWrap(playerPosition)
+    Color(1,1,0)
+    Text(0,0,"Score: " + score + "       ")
+    
+    Color(1,1,1)
+    DrawVector(shipModel, playerPosition, 1, playerRotation)
+    
+    Color(1,0,0)
+    loop ind in GetIndexes(bulletList)
+        array b = bulletList[ind]
+        b[0] = V2Add(V2Mul(b[1],[deltaT,deltaT]),b[0])
+        bool hit = false
+        loop i in GetIndexes(asteroidList)
+            array a = asteroidList[i]
+            if InRadius(b[0],a[0],a[2])
+                if a[2]>16
+                    a[2] = a[2]/2
+                    a[1] = V2FromPolar(RandomAngle(),asteroidVel*speedup)
+                    array velocity = V2FromPolar(RandomAngle(),asteroidVel*speedup)
+                    Append(asteroidList,[b[0],velocity,a[2], RandomAngle()])
+                else
+                    Remove(asteroidList,i)
+                end
+                PlaySound("Explosion 1")
+                hit = true
+                score += 100
+                break
+            end
+        end
+        array p = b[0]
+        if (p[0] < 0) || (p[0] > Width())
+            hit = true
+        else if (p[1] < 0) || (p[1] > Height())
+            hit = true
+        end
+        
+        if hit
+            Remove(bulletList,ind)
+        else
+            DrawVector(bulletModel,b[0],1,b[2])
+        end
+    end
+        
+    Color(1,1,0)
+    loop a in asteroidList
+        a[0] = V2Add(a[0],V2Mul(a[1],[deltaT,deltaT]))
+        ScreenWrap(a[0])
+        a[3] = a[3] + asteroidRot*deltaT
+        DrawVector(asteroidModel, a[0], a[2], a[3])
+        if InRadius(playerPosition, a[0],a[2])
+            dead = true
+        end
+        
+    end
+    if Count(asteroidList) == 0
+        score += 1000
+        GenerateAsteroidModel()
+        Append(asteroidList, GenerateAsteroid())
+        Append(asteroidList, GenerateAsteroid())
+    end
+    if dead
+        RestartGame()
+    end
+    DisplayGraphics()
+end
+
+#Add a wireframe to the draw buffer
+void DrawWireframe(array model, array pos, number scale, number rotation) 
+    array modelN = []
+    number s = Sin(rotation)
+    number c = Cos(rotation)
+    loop v in model
+        number px = v[0]*scale
+        number py = v[1]*scale
+        Append(modelN, (px*c-py*s)+pos[0])
+        Append(modelN, (px*s+py*c)+pos[1])
+    end
+    Lines(modelN)
+end
+
+array GenerateBullet()
+    number rotation = playerRotation + 3.1459/2
+    array position = V2FromPolar(rotation,bulletLength)
+    position = V2Add(position, playerPosition)
+    array velocity = V2FromPolar(rotation, bulletVelocity)
+    return [position, velocity, playerRotation]
+end
+
+void RestartGame()
+    GenerateAsteroidModel()
+    dead = false
+    RemoveAll(bulletList)
+    playerVelocity = [0,0]
+    playerRotation = 0
+    RemoveAll(asteroidList)
+    playerPosition = middle
+    Append(asteroidList,GenerateAsteroid())
+    Append(asteroidList,GenerateAsteroid())
+    score = 0
+end
+
+array GenerateAsteroid()
+    number angle = RandomAngle()
+    array position = V2FromPolar(angle,160)
+    position = V2Add(position, playerPosition)
+    ScreenWrap(position)
+    angle = RandomAngle()
+    array velocity = V2FromPolar(angle,asteroidVel)
+    return [position,velocity,asteroidSize, angle]
+end
+    
+    
+void GenerateAsteroidModel()
+    number asteroidStep = (2 * 3.1459)/(asteroidPoints + 1)
+    RemoveAll(asteroidModel)
+    loop i from 0 to asteroidPoints
+        number radius = asteroidRadius-asteroidJiggle/2+Random()*asteroidJiggle
+        number x = Cos(i*asteroidStep)*radius
+        number y = Sin(i*asteroidStep)*radius
+        Append(asteroidModel, [x,y])
+    end
+    Append(asteroidModel, asteroidModel[0])
+end
+
+void ScreenWrap(array p)
+    if p[0] < 0
+        p[0] = p[0] + Width()
+    else if p[0] > Width()
+        p[0] = Mod(p[0],Width())
+    end
+    if p[1] < 0
+        p[1] = p[1] + Height()
+    else if p[1] > Height()
+        p[1] = p[1] - Height()
+    end
+end
+
+#Display a vector graphic
+void DrawVector(array model, array pos, number scale, number rotation) 
+    array modelN = []
+    number s = Sin(rotation)
+    number c = Cos(rotation)
+    loop v in model
+        number px = v[0]*scale
+        number py = v[1]*scale
+        Append(modelN, (px*c-py*s)+pos[0])
+        Append(modelN, (px*s+py*c)+pos[1])
+    end
+    Lines(modelN)
+end
+
+#Rotate a vector
+array V2Rotate(array v, number theta)
+    number s = Sin(theta)
+    number c = Cos(theta)
+    return [v[0]*c-v[1]*s,v[0]*s+v[0]*c]
+end
+
+#Create a new vector
+array V2(number x,number y)
+    return [x,y]
+end
+
+#Add two vectors
+array V2Add(array v1, array v2)
+    return [v1[0]+v2[0],v1[1]+v2[1]]
+end
+
+#Subtract two vectors
+array V2Sub(array v1, array v2)
+    return [v1[0]-v2[0],v1[1]-v2[1]]
+end
+
+#Multiply two vectors
+array V2Mul(array v1, array v2)
+    return [v1[0]*v2[0], v1[1]*v2[1]]
+end
+
+#Divide two vectors
+array V2Div(array v1, array v2)
+    return [v1[0]/v2[0], v1[1]/v2[1]]
+end
+
+
+#Magnitude of a vector
+number V2Magnitude(array v)
+    return Sqrt(v[0]*v[0] + v[1]*v[1])
+end
+
+#Distance between two vectors
+number V2Distance(array v1, array v2)
+    array v = V2Sub(v1,v2)
+    return Sqrt(v[0]*v[0] + v[1]*v[1])
+end
+
+#Generate a random number between 0 and 2 Pi
+number RandomAngle()
+    return Random()*Pi*2
+end
+
+#Create a cartesian vector from a euler vector
+array V2FromPolar(number theta, number mag)
+    return [Cos(theta)*mag, Sin(theta)*mag]
+end
+
+#Test if two points are within a given range of each other
+bool InRadius(array p1, array p2, number radius)
+    number x = (p1[0]-p2[0])
+    number y = (p1[1]-p2[1])
+    return x*x + y*y <= radius*radius
+end
+
+#Square root
+number Sqrt(number x)
+    number result = 0
+    number factor = x/2
+    loop i in Range(1,16)
+        if result*result < x
+            result += factor
+        else if result*result > x
+            result -= factor
+        end
+        factor = factor/2
+    end
+    return result
+end
