@@ -1,0 +1,87 @@
+
+number Pi = 3.141592653
+
+#Display a vector graphic
+void DrawVector(array model, array pos, number scale, number rotation) 
+    array modelN = []
+    number s = Sin(rotation)
+    number c = Cos(rotation)
+    loop v in model
+        number px = v[0]*scale
+        number py = v[1]*scale
+        Append(modelN, (px*c-py*s)+pos[0])
+        Append(modelN, (px*s+py*c)+pos[1])
+    end
+    Lines(modelN)
+end
+
+#Rotate a vector
+array V2Rotate(array v, number theta)
+    number s = Sin(theta)
+    number c = Cos(theta)
+    return [v[0]*c-v[1]*s,v[0]*s+v[0]*c]
+end
+
+#Create a new vector
+array V2(number x,number y)
+    return [x,y]
+end
+
+#Add two vectors
+array V2Add(array v1, array v2)
+    return [v1[0]+v2[0],v1[1]+v2[1]]
+end
+
+#Subtract two vectors
+array V2Sub(array v1, array v2)
+    return [v1[0]-v2[0],v1[1]-v2[1]]
+end
+
+#Multiply two vectors
+array V2Mul(array v1, array v2)
+    return [v1[0]*v2[0], v1[1]*v2[1]]
+end
+
+#Divide two vectors
+array V2Div(array v1, array v2)
+    return [v1[0]/v2[0], v1[1]/v2[1]]
+end
+
+#Magnitude of a vector
+number V2Distance(array v)
+    return Sqrt(v[0]*v[0] + v[1]*v[1])
+end
+
+
+#Generate a random number between 0 and 2 Pi
+number RandomAngle()
+    return Random()*Pi*2
+end
+
+#Create a cartesian vector from a euler vector
+array V2FromPolar(number theta, number mag)
+    return [Cos(theta)*mag, Sin(theta)*mag]
+end
+
+#Test if two points are within a given range of each other
+bool InRadius(array p1, array p2, number radius)
+    number x = (p1[0]-p2[0])
+    number y = (p1[1]-p2[1])
+    return x*x + y*y <= radius*radius
+end
+
+
+#Square root
+number Sqrt(number x)
+    number result = 0
+    number factor = x/2
+    loop i in Range(1,16)
+        if result*result < x
+            result += factor
+        else if result*result > x
+            result -= factor
+        end
+        factor = factor/2
+    end
+    return result
+end
